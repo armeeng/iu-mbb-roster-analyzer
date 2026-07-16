@@ -178,7 +178,12 @@ with col_roster:
             unsafe_allow_html=True,
         )
         for slot in roster:
-            row = pool_row(slot.player_id, player_pool)
+            # On the rerun a swap triggers, slot.player_id still holds the
+            # outgoing player until swap_slot below — but the selectbox's new
+            # value is already in session_state, so read it from there to keep
+            # the position tag and tooltip in sync with the incoming player.
+            shown_id = st.session_state.get(f"player_{slot.slot_id}", slot.player_id)
+            row = pool_row(shown_id, player_pool)
             pos_label = (position_group(row.get("role")) if row is not None else None) or "-"
 
             c_name, c_pos, c_slider, c_min = st.columns([3.1, 0.9, 3.6, 0.9])
@@ -189,7 +194,7 @@ with col_roster:
                     "Player", player_ids, index=default_idx,
                     format_func=lambda pid: player_label_by_id.get(pid, pid),
                     key=f"player_{slot.slot_id}", label_visibility="collapsed",
-                    help=_player_context(slot.player_id, row),
+                    help=_player_context(shown_id, row),
                 )
                 if chosen_id != slot.player_id:
                     swap_slot(slot.slot_id, player_name_by_id[chosen_id], chosen_id)
