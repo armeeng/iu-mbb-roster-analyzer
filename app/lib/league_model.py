@@ -189,6 +189,18 @@ def _ortg_by_clean_name() -> dict[str, float]:
     return dict(zip(rc["_clean"], pd.to_numeric(rc["ortg"], errors="coerce")))
 
 
+def rostercast_scoreable_names() -> set[str]:
+    """The clean_name keys the season-sim proxy can score offense for — i.e.
+    players with a usable projected RosterCast Ortg, read from the exact
+    lookup _iu_roster_proxy_from_rostercast uses (_ortg_by_clean_name).
+    Home.py gates the player dropdown on this set so every selectable player
+    carries the projected Ortg the win-probability engine needs; anyone
+    outside it would contribute zero offense weight to the IU proxy,
+    silently distorting the season simulation. Defense needs no equivalent
+    gate — _drtg_fallback_for always produces a number."""
+    return set(_ortg_by_clean_name())
+
+
 @st.cache_data
 def _recruit_rank_by_clean_name() -> dict[str, float]:
     """Torvik's own RecruiT-Rank per player (~0-100+, roughly a percentile;

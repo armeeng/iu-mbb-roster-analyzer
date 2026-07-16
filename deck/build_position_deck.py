@@ -51,16 +51,16 @@ MAX_GAMES = 40     # sanity ceiling — no D1 team plays more games than this in
 
 # Position groups (BartTorvik roles → PG / Combo / Wing / PF / C)
 POSITION_GROUPS = [
-    ("PG",    {'Pure PG'}),
-    ("Combo", {'Combo G', 'Scoring PG'}),
+    ("PG",    {'Pure PG', 'Scoring PG'}),
+    ("Combo", {'Combo G'}),
     ("Wing",  {'Wing G', 'Wing F'}),
     ("PF",    {'Stretch 4', 'PF/C'}),
     ("C",     {'C'}),
 ]
 GROUP_ROMAN = {"PG": "I", "Combo": "II", "Wing": "III", "PF": "IV", "C": "V"}
 GROUP_ROLES_DESC = {
-    "PG":    "Pure PG",
-    "Combo": "Combo G  ·  Scoring PG",
+    "PG":    "Pure PG  ·  Scoring PG",
+    "Combo": "Combo G",
     "Wing":  "Wing G  ·  Wing F",
     "PF":    "Stretch 4  ·  PF/C",
     "C":     "Center",

@@ -22,7 +22,10 @@ from lib.percentile_engine import (
     compute_d1_population, compute_team_breakdown, compute_team_population,
     player_flags, pool_row, ordinal,
 )
-from lib.league_model import build_team_proxies, compute_iu_d1_net_rank, B1G_TEAMS
+from lib.league_model import (
+    build_team_proxies, compute_iu_d1_net_rank, rostercast_scoreable_names, B1G_TEAMS,
+)
+from lib.name_match import clean_name
 from lib.simulate_season import (
     load_or_build_schedule, monte_carlo_season, estimate_tournament_odds,
 )
@@ -82,10 +85,21 @@ def _player_options() -> tuple[list[str], dict[str, str], dict[str, str]]:
     known duplicates, e.g. two different "Jake Davis" on different teams).
     label_by_id disambiguates the dropdown with a team suffix only when a
     name collides; name_by_id is always the plain espn_name, stored on the
-    roster slot for display elsewhere (AI prompt, captions)."""
+    roster slot for display elsewhere (AI prompt, captions).
+
+    Real players are further limited to rostercast_scoreable_names — those
+    with a usable RosterCast Ortg, the one per-player input the season-sim
+    engine has no fallback for — so every selectable player is on a
+    projected 2026-27 roster AND fully scoreable by the win-probability
+    engine (team-projection box stats are already guaranteed by the
+    games >= 5 floor). The 4 hardcoded recruits stay exempt: they carry
+    estimated stat lines, and Sokolov (a default roster slot) has no
+    RosterCast Ortg of his own."""
     games = pd.to_numeric(player_pool["games"], errors="coerce")
     is_estimate = player_pool.get("is_estimate", False).fillna(False)
     pool = player_pool[(games >= 5) | is_estimate].dropna(subset=["espn_name", "espn_id"]).copy()
+    sim_scoreable = pool["espn_name"].map(clean_name).isin(rostercast_scoreable_names())
+    pool = pool[sim_scoreable | is_estimate.loc[pool.index]]
     is_dupe = pool["espn_name"].duplicated(keep=False)
     pool["label"] = pool["espn_name"]
     pool.loc[is_dupe, "label"] = (
