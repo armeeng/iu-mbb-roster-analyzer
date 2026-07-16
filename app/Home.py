@@ -279,7 +279,7 @@ with col_season:
         m1, m2, m3 = st.columns(3)
         m1.metric("Record", f"{overall_wins:.1f}-{overall_games - overall_wins:.1f}")
         m2.metric("B1G Finish", f"#{iu_row['mean_finish_rank']:.0f}")
-        m3.metric("At-Large", f"{ncaa_odds * 100:.0f}%")
+        m3.metric("At-Large Bid", f"{ncaa_odds * 100:.0f}%")
 
         st.markdown('<div class="sub-label">Big Ten standings</div>', unsafe_allow_html=True)
         display_standings = standings[["team", "mean_conf_wins", "conf_games", "mean_finish_rank"]].copy()
