@@ -23,7 +23,6 @@ from lib.percentile_engine import (
     player_flags, pool_row, ordinal,
 )
 from lib.league_model import build_team_proxies, compute_iu_d1_net_rank, B1G_TEAMS
-from lib.team_strength import developed_obpr_dbpr
 from lib.simulate_season import (
     load_or_build_schedule, monte_carlo_season, estimate_tournament_odds,
 )
@@ -129,31 +128,6 @@ def _stat_bar(label: str, value_str: str, pct: int | None) -> str:
     )
 
 
-def _developed_bpr_for_sort(slot) -> float:
-    """Sort key for the BPR-reallocation button — developed (projected
-    2026-27) BPR, since that's the same number driving Positional Production
-    and the win-prob engine. Missing BPR sorts last, not first."""
-    row = pool_row(slot.player_id, player_pool)
-    if row is None:
-        return float("-inf")
-    obpr, dbpr = developed_obpr_dbpr(row)
-    return obpr + dbpr if obpr is not None and dbpr is not None else float("-inf")
-
-
-def _sort_minutes_by_bpr(roster) -> None:
-    """Keeps the current set of minute values (same total, same "shape") but
-    reassigns them so the highest-BPR player gets the most minutes and the
-    lowest gets the fewest. Also overwrites each slider's own widget state
-    (not just the underlying roster data) — Streamlit sliders ignore a new
-    `value=` on rerun once their key has been rendered before, so without
-    this the sliders wouldn't visually update even though the roster did."""
-    sorted_mpgs = sorted((s.mpg for s in roster), reverse=True)
-    ranked_slots = sorted(roster, key=_developed_bpr_for_sort, reverse=True)
-    for slot, mpg in zip(ranked_slots, sorted_mpgs):
-        set_mpg(slot.slot_id, mpg)
-        st.session_state[f"mpg_{slot.slot_id}"] = mpg
-
-
 def run_season_simulation(roster):
     """Builds the real last-season-derived schedule, proxies for every team
     it involves (18 B1G + real non-conference opponents), and simulates.
@@ -171,9 +145,6 @@ def run_season_simulation(roster):
 st.markdown("<h1>Indiana 2026-27 Roster Analyzer</h1>", unsafe_allow_html=True)
 
 roster = st.session_state.roster
-if "_minutes_sorted_on_init" not in st.session_state:
-    _sort_minutes_by_bpr(roster)
-    st.session_state["_minutes_sorted_on_init"] = True
 player_ids, player_label_by_id, player_name_by_id = _player_options()
 
 col_roster, col_stats, col_season = st.columns([1.25, 1, 1.15])
@@ -305,7 +276,7 @@ with col_season:
         overall_games = iu_row["overall_games"]
 
         m1, m2, m3 = st.columns(3)
-        m1.metric("Record", f"{overall_wins:.0f}-{overall_games - overall_wins:.0f}")
+        m1.metric("Record", f"{overall_wins:.1f}-{overall_games - overall_wins:.1f}")
         m2.metric("B1G Finish", f"#{iu_row['mean_finish_rank']:.0f}")
         m3.metric("At-Large", f"{ncaa_odds * 100:.0f}%")
 
