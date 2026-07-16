@@ -64,6 +64,7 @@ h1 { font-size: 1.4rem !important; font-weight: 700 !important; margin: 0 0 0.6r
 .pos-table th.rowhead, .pos-table td.rowlabel { text-align: left; color: #666; font-weight: 600; width: 30%; }
 .pos-table tbody tr:not(:last-child) td { border-bottom: 1px solid #f5f5f5; }
 [data-testid="stElementContainer"] { margin-bottom: 0 !important; }
+[data-testid="stMetricValue"] { font-size: 1.5rem !important; }
 div[data-testid="stSelectbox"] label, div[data-testid="stSlider"] label { display: none; }
 [data-testid="stVerticalBlockBorderWrapper"] { border-radius: 8px; }
 </style>
