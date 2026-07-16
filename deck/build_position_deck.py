@@ -174,7 +174,11 @@ def pct_bar(slide, pct_val, l, t, w, h=0.055, higher_better=True):
 
 
 def fmt(v, dec=1, suf=""):
-    try:    return f"{float(v):.{dec}f}{suf}"
+    try:
+        f = float(v)
+        if f != f:  # NaN
+            return f"{0:.{dec}f}{suf}"
+        return f"{f:.{dec}f}{suf}"
     except: return "—"
 
 
@@ -773,12 +777,18 @@ def slide_player(prs, rank, row, pct_arrays, n_total, group_name):
         R(s, sx, y, sw, ROW_H - 0.02, bg)
 
         val_raw = row.get(key)
-        pct     = get_pct(val_raw, pct_arrays.get(key))
-        eff_pct = pct if hib else (100 - pct if pct is not None else None)
-        clr     = val_color(pct, hib)
         suf     = "%" if key in ("efg_pct","usg_pct","three_pct") else ""
         lbl     = STAT_META[key][0]
-        val_str = fmt(val_raw, 1, suf)
+        if pd.isna(val_raw):
+            val_str = f"{0:.1f}{suf}"
+            pct     = 0.0
+            eff_pct = 0.0
+            clr     = RED
+        else:
+            pct     = get_pct(val_raw, pct_arrays.get(key))
+            eff_pct = pct if hib else (100 - pct if pct is not None else None)
+            clr     = val_color(pct, hib)
+            val_str = fmt(val_raw, 1, suf)
 
         mid_y = y + (ROW_H - 0.02)/2 - 0.11
 
@@ -803,9 +813,14 @@ def slide_player(prs, rank, row, pct_arrays, n_total, group_name):
     T(s, "Career production  ·  vs all D1",
       rx, ry+0.28, rw, 0.20, sz=7, clr=TEXT_LIGHT, italic=True)
 
-    obpr   = float(row.get("obpr") or 0)
-    dbpr   = float(row.get("dbpr") or 0)
+    obpr_raw = row.get("obpr")
+    dbpr_raw = row.get("dbpr")
+    obpr_nan = pd.isna(obpr_raw)
+    dbpr_nan = pd.isna(dbpr_raw)
+    obpr   = 0.0 if obpr_nan else float(obpr_raw)
+    dbpr   = 0.0 if dbpr_nan else float(dbpr_raw)
     bpr    = obpr + dbpr
+    bpr_is_nan = obpr_nan or dbpr_nan
 
     card_w = rw
     card_h = 3.25
@@ -839,7 +854,7 @@ def slide_player(prs, rank, row, pct_arrays, n_total, group_name):
       sz=30, bold=True, clr=TEXT_MED, align=PP_ALIGN.CENTER)
     ov_y += 0.60
 
-    bpr_pct = get_pct(bpr, pct_arrays.get("bpr"))
+    bpr_pct = 0.0 if bpr_is_nan else get_pct(bpr, pct_arrays.get("bpr"))
     pct_bar(s, bpr_pct, cx+0.18, ov_y, card_w-0.36, 0.055, True)
     if bpr_pct is not None:
         T(s, f"{ordinal(int(bpr_pct))} percentile",
@@ -919,9 +934,9 @@ def slide_group_header(prs, group_name, pool):
           sz=8, bold=True, clr=SCARLET, align=PP_ALIGN.CENTER)
         num_box.text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
 
-        T(s, name, RX + 0.34, list_y, 3.60, 0.28,
+        T(s, name, RX + 0.34, list_y + 0.05, 3.60, 0.28,
           sz=10.5, bold=True, clr=TEXT)
-        T(s, school, RX + 4.00, list_y + 0.02, RW - 4.05, 0.26,
+        T(s, school, RX + 4.00, list_y + 0.07, RW - 4.05, 0.26,
           sz=9, clr=TEXT_LIGHT, italic=True)
 
         list_y += 0.385
