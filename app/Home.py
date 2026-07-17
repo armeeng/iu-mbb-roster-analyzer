@@ -15,7 +15,7 @@ from lib.data_loader import load_player_pool
 from lib.position_groups import POSITION_GROUPS, position_group
 from lib.recruit_config import is_wide_uncertainty
 from lib.roster_state import (
-    init_session_state, total_minutes, minutes_status, set_mpg, swap_slot,
+    init_session_state, minutes_status, set_mpg, swap_slot,
     TARGET_TOTAL_MPG,
 )
 from lib.percentile_engine import (
@@ -169,7 +169,11 @@ with col_roster:
     with st.container(border=True):
         st.markdown('<div class="section-label">Roster</div>', unsafe_allow_html=True)
 
-        total = total_minutes(roster)
+        # Read fresh slider values from widget session state — slot.mpg isn't
+        # updated until each slider's set_mpg below, so totaling the roster
+        # here would leave the badge one interaction behind (same staleness
+        # the shown_id read in the slot loop works around for selectboxes).
+        total = sum(float(st.session_state.get(f"mpg_{s.slot_id}", s.mpg)) for s in roster)
         status = minutes_status(total)
         badge_color = {"ok": "#1a7a1a", "warn": "#b8860b", "bad": "#990000"}[status]
         st.markdown(
