@@ -178,15 +178,36 @@ def _rostercast_by_clean_name() -> pd.DataFrame:
     return rc.sort_values("_mins", ascending=False).drop_duplicates("_clean", keep="first")
 
 
+# Hand-set projected 2026-27 Ortg for players RosterCast doesn't project at
+# all (out of standard eligibility, so on no team's RosterCast page) but who
+# should still be selectable — being in this dict is what admits them to the
+# roster dropdown (via rostercast_scoreable_names). Keyed by clean_name.
+# RosterCast wins on overlap, so a stale entry is harmless once Torvik
+# starts projecting the player for real.
+MANUAL_ORTG_ADDITIONS: dict[str, float] = {
+    # Pursuing a 5th year at IU. 2025-26 actual Ortg was 131.6 (32 games);
+    # regressing it the way RosterCast regresses returning players
+    # (rc_ortg ≈ 0.41 * last_ortg + 67, fit on the 1,492 players present in
+    # both d1_master and RosterCast with >= 15 games and >= 15 MPG) gives
+    # ~121 — in line with the ~120 RosterCast average for returners whose
+    # actual Ortg was 125+.
+    "sam alexis": 121.0,
+}
+
+
 @st.cache_data
 def _ortg_by_clean_name() -> dict[str, float]:
     """Best projected 2026-27 Ortg per player, keyed by clean_name(player),
     across every team's RosterCast page — not just Indiana's own — so a
     player swapped into an IU slot from anywhere in D1 (lib/roster_state.
-    swap_slot) still carries a real projected offensive number."""
+    swap_slot) still carries a real projected offensive number. Players in
+    MANUAL_ORTG_ADDITIONS are folded in (real RosterCast data wins on
+    overlap)."""
     rc = _rostercast_by_clean_name()
     rc = rc[rc["ortg"].notna()]
-    return dict(zip(rc["_clean"], pd.to_numeric(rc["ortg"], errors="coerce")))
+    ortg = dict(MANUAL_ORTG_ADDITIONS)
+    ortg.update(zip(rc["_clean"], pd.to_numeric(rc["ortg"], errors="coerce")))
+    return ortg
 
 
 def rostercast_scoreable_names() -> set[str]:
