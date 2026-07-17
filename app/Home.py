@@ -14,13 +14,13 @@ import streamlit as st
 from lib.data_loader import load_player_pool
 from lib.position_groups import POSITION_GROUPS, position_group
 from lib.recruit_config import is_wide_uncertainty
+from lib.optimize_minutes import optimize_minutes
 from lib.roster_state import (
-    init_session_state, minutes_status, set_mpg, swap_slot,
-    TARGET_TOTAL_MPG,
+    init_session_state, minutes_status, set_mpg, swap_slot, TARGET_TOTAL_MPG,
 )
 from lib.percentile_engine import (
-    compute_d1_population, compute_team_breakdown, compute_team_population,
-    player_flags, pool_row, ordinal,
+    color_for_percentile, compute_d1_population, compute_team_breakdown,
+    compute_team_population, player_flags, pool_row, ordinal,
 )
 from lib.league_model import (
     build_team_proxies, compute_iu_d1_net_rank, rostercast_scoreable_names, B1G_TEAMS,
@@ -60,7 +60,7 @@ h1 { font-size: 1.4rem !important; font-weight: 700 !important; margin: 0 0 0.6r
 .stat-row .top { display: flex; justify-content: space-between; color: #333; }
 .stat-row .top .v { color: #888; }
 .stat-bar { background: #eee; border-radius: 3px; height: 5px; width: 100%; margin-top: 2px; }
-.stat-bar .fill { background: #990000; height: 5px; border-radius: 3px; }
+.stat-bar .fill { height: 5px; border-radius: 3px; }
 .pos-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; table-layout: fixed; margin-bottom: 4px; }
 .pos-table th, .pos-table td { text-align: center; padding: 4px 2px; color: #333; }
 .pos-table thead th { color: #999; font-weight: 600; font-size: 0.68rem; border-bottom: 1px solid #eee; }
@@ -136,10 +136,11 @@ def _stat_bar(label: str, value_str: str, pct: int | None) -> str:
             f'<span class="v">N/A</span></div></div>'
         )
     pct_c = max(0, min(100, pct))
+    color = color_for_percentile(pct)
     return (
         f'<div class="stat-row"><div class="top"><span>{label}</span>'
         f'<span class="v">{value_str} · {ordinal(pct)} percentile</span></div>'
-        f'<div class="stat-bar"><div class="fill" style="width:{pct_c}%;"></div></div></div>'
+        f'<div class="stat-bar"><div class="fill" style="width:{pct_c}%;background:{color};"></div></div></div>'
     )
 
 
@@ -155,6 +156,15 @@ def run_season_simulation(roster):
     d1_net_rank = compute_iu_d1_net_rank(roster)
     ncaa_odds = estimate_tournament_odds(d1_net_rank)
     return standings, iu_row, ncaa_odds
+
+
+def _apply_optimized_minutes() -> None:
+    """on_click callback — runs before the rerun, so writing the slider
+    widget keys here is the one safe way to move sliders programmatically."""
+    result = optimize_minutes(st.session_state.roster, player_pool)
+    for s in result.slots:
+        set_mpg(s.slot_id, s.mpg)
+        st.session_state[f"mpg_{s.slot_id}"] = s.mpg
 
 
 st.markdown("<h1>Indiana 2026-27 Roster Analyzer</h1>", unsafe_allow_html=True)
@@ -217,6 +227,17 @@ with col_roster:
             with c_min:
                 st.markdown(f'<span class="min-val">{mpg:.0f} min</span>', unsafe_allow_html=True)
 
+        # ── Minutes optimizer ────────────────────────────────────────────
+        st.button(
+            "Optimize minutes",
+            help="Reallocates the 200 minutes across the current players to "
+                 "maximize projected team strength (season-sim net rating "
+                 "blended with projected BPR), with a soft fatigue penalty on "
+                 "heavy minutes and lineup floors (60 combined PG/Combo min, "
+                 "60 combined PF/C min). Moves the sliders directly.",
+            on_click=_apply_optimized_minutes,
+        )
+
 roster = st.session_state.roster  # re-read after any edits above
 
 # ── Team stats ───────────────────────────────────────────────────────────
@@ -272,7 +293,8 @@ with stats_card:
     body_html = ""
     for label, d in pos_rows:
         cells = "".join(
-            f"<td>{ordinal(v)}</td>" if (v := d.get(pg)) is not None else "<td>N/A</td>"
+            f'<td style="background:{color_for_percentile(v, alpha=0.18)};">{ordinal(v)}</td>'
+            if (v := d.get(pg)) is not None else "<td>N/A</td>"
             for pg in POSITION_GROUPS
         )
         body_html += f'<tr><td class="rowlabel">{label}</td>{cells}</tr>'

@@ -42,11 +42,21 @@ def _load_attempt_volume_per40() -> pd.DataFrame:
     })
 
 
+# Hand-corrected BartTorvik `role` values, keyed by espn_id — applied on
+# load so every role consumer (position tags, positional percentile buckets,
+# league model, AI prompt) sees the same correction. Values must be spelled
+# exactly as the CSV spells them (see position_groups.ROLE_TO_POSGROUP).
+MANUAL_ROLE_OVERRIDES: dict[str, str] = {
+    "5107375": "PF/C",  # Sam Alexis — Torvik says C; the staff views him as a PF
+}
+
+
 @st.cache_data
 def load_d1_master() -> pd.DataFrame:
     df = pd.read_csv(DATA_DIR / "d1_master_2026.csv", dtype={"espn_id": str})
     df["class_year_num"] = df["class_year"].astype(str).str.strip().str.lower().map(CLASS_YEAR_TO_NUM)
     df = df.merge(_load_attempt_volume_per40(), on="espn_id", how="left")
+    df["role"] = df["espn_id"].map(MANUAL_ROLE_OVERRIDES).fillna(df["role"])
     return df
 
 

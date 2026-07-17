@@ -240,19 +240,56 @@ def ordinal(n: int) -> str:
     return f"{n}{suffix}"
 
 
-def tier_for_percentile(pct: int | None, lower_is_better: bool = False) -> str | None:
+def tier_for_percentile(pct: int | None) -> str | None:
+    """pct must come from percentile_rank, which already direction-adjusts
+    LOWER_IS_BETTER columns (higher percentile = better for every stat,
+    including turnovers) — never re-invert here."""
     if pct is None:
         return None
-    eff = (100 - pct) if lower_is_better else pct
-    if eff >= 80:
+    if pct >= 80:
         return "elite"
-    if eff >= 60:
+    if pct >= 60:
         return "strong"
-    if eff >= 40:
+    if pct >= 40:
         return "average"
-    if eff >= 20:
+    if pct >= 20:
         return "weak"
     return "poor"
+
+
+# Diverging good/bad ramp for percentile highlighting: red (bad) -> neutral
+# gray -> green (good), per explicit user choice. These exact poles matter:
+# matched-lightness red/green pairs collapse under red-green colorblindness
+# (simulated CVD dE 1.4-4.6, far below the >=8 safety floor), so the poles
+# are DARK red #990000 vs MID green #0ca30c — the lightness gap carries the
+# distinction (CVD dE 18.1, passing) — and the printed percentile text next
+# to every colored element keeps the value readable without color at all.
+# Don't lightness-match these poles "for symmetry"; that reintroduces the
+# collapse. Stops interpolated in OKLab through midpoint #898781; every
+# stop holds >=3.35:1 contrast on white. Like tier_for_percentile, expects
+# percentile_rank output: already direction-adjusted, higher = better for
+# every stat.
+PCT_COLOR_STOPS = [
+    (0, (153, 0, 0)),
+    (25, (152, 86, 73)),
+    (50, (137, 135, 129)),
+    (75, (98, 151, 88)),
+    (100, (12, 163, 12)),
+]
+
+
+def color_for_percentile(pct: int, alpha: float | None = None) -> str:
+    """CSS color for a direction-adjusted percentile. alpha (0-1) returns a
+    translucent wash of the same hue — for tinting table cells over white."""
+    p = max(0, min(100, pct))
+    for (lo, lo_rgb), (hi, hi_rgb) in zip(PCT_COLOR_STOPS, PCT_COLOR_STOPS[1:]):
+        if p <= hi:
+            t = (p - lo) / (hi - lo)
+            r, g, b = (round(a + (b_ - a) * t) for a, b_ in zip(lo_rgb, hi_rgb))
+            break
+    if alpha is None:
+        return f"rgb({r},{g},{b})"
+    return f"rgba({r},{g},{b},{alpha})"
 
 
 def pool_row(player_id: str, player_pool_df: pd.DataFrame) -> pd.Series | None:
@@ -311,7 +348,7 @@ def compute_team_breakdown(
             "label": TEAM_STAT_LABELS[col],
             "team_value": team_val,
             "percentile": pct,
-            "tier": tier_for_percentile(pct, col in LOWER_IS_BETTER),
+            "tier": tier_for_percentile(pct),
         }
 
     # Positional production/size/experience are compared against same-position

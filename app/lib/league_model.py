@@ -222,6 +222,91 @@ def rostercast_scoreable_names() -> set[str]:
     return set(_ortg_by_clean_name())
 
 
+def player_sim_net(player_name: str) -> float | None:
+    """The net rating the season-sim IU proxy credits this player with per
+    minute-share: RosterCast projected 2026-27 Ortg (incl. MANUAL_ORTG_
+    ADDITIONS) minus last-season adj_drtg (or the position/recruiting-rank
+    peer fallback) — identical sourcing to _iu_roster_proxy_from_rostercast.
+    None when the player has no projected Ortg: the proxy credits them zero
+    offense weight, so no meaningful per-minute net exists (the minutes
+    optimizer zeroes such players out)."""
+    name = clean_name(player_name)
+    ortg = _ortg_by_clean_name().get(name)
+    if ortg is None:
+        return None
+    drtg = _last_year_drtg_by_clean_name().get(name)
+    if drtg is None:
+        drtg = _drtg_fallback_for(player_name)
+    return float(ortg) - float(drtg)
+
+
+def _player_bpr(row) -> float | None:
+    """BartTorvik's own forward-looking ensemble BPR projection
+    (ens_proj_bpr) where available, else this season's realized bpr —
+    a fuller, role-normalized read on a player's quality than a single
+    season's Ortg/Drtg split."""
+    if row is None:
+        return None
+    bpr = row.get("ens_proj_bpr")
+    if bpr is None or pd.isna(bpr):
+        bpr = row.get("bpr")
+    return float(bpr) if bpr is not None and pd.notna(bpr) else None
+
+
+@st.cache_data
+def _sim_net_and_bpr_population() -> pd.DataFrame:
+    """(sim net, BPR) pairs for every scoreable D1 player — the reference
+    distribution player_optimizer_value standardizes against, since net
+    (roughly +/-30) and BPR (roughly +/-10) sit on very different natural
+    scales and can't be blended as raw numbers."""
+    from lib.data_loader import load_player_pool
+
+    pool = load_player_pool().copy()
+    pool["_clean"] = pool["espn_name"].map(clean_name)
+    pool = pool[pool["_clean"].isin(rostercast_scoreable_names())]
+
+    nets, bprs = [], []
+    for _, row in pool.iterrows():
+        net = player_sim_net(row["espn_name"])
+        bpr = _player_bpr(row)
+        if net is None or bpr is None:
+            continue
+        nets.append(net)
+        bprs.append(bpr)
+    return pd.DataFrame({"net": nets, "bpr": bprs})
+
+
+# 0 = pure sim net, 1 = pure BPR. Sim net alone (Ortg minus last-season
+# Drtg) over-trusts a small-sample last-season Drtg extrapolated to a full
+# role — e.g. Darren Harris's ~10 MPG bench-role Drtg outscored Burton's
+# and Sherrell's on net alone despite both carrying a clearly higher BPR.
+# 0.5 was chosen (over smaller nudges) specifically to fix that ordering.
+BPR_BLEND_WEIGHT = 0.5
+
+
+def player_optimizer_value(player_name: str, row) -> float | None:
+    """The minutes optimizer's ranking metric: player_sim_net blended with
+    BPR (BPR_BLEND_WEIGHT), both z-scored against _sim_net_and_bpr_
+    population so the blend isn't distorted by their different natural
+    scales, then mapped back onto net's own scale so it stays comparable
+    to a plain sim net. Falls back to the plain sim net if this player has
+    no usable BPR (row is None, or bpr/ens_proj_bpr are both missing)."""
+    net = player_sim_net(player_name)
+    if net is None:
+        return None
+    bpr = _player_bpr(row)
+    if bpr is None:
+        return net
+
+    stats = _sim_net_and_bpr_population()
+    net_mean, net_std = stats["net"].mean(), stats["net"].std()
+    bpr_mean, bpr_std = stats["bpr"].mean(), stats["bpr"].std()
+    z_net = (net - net_mean) / net_std
+    z_bpr = (bpr - bpr_mean) / bpr_std
+    z = (1 - BPR_BLEND_WEIGHT) * z_net + BPR_BLEND_WEIGHT * z_bpr
+    return net_mean + z * net_std
+
+
 @st.cache_data
 def _recruit_rank_by_clean_name() -> dict[str, float]:
     """Torvik's own RecruiT-Rank per player (~0-100+, roughly a percentile;
