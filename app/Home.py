@@ -181,13 +181,6 @@ with col_roster:
     with st.container(border=True):
         st.markdown('<div class="section-label">Roster</div>', unsafe_allow_html=True)
 
-        # ── Minutes optimizer ────────────────────────────────────────────
-        st.button(
-            "Optimize minutes",
-            type="primary",
-            on_click=_apply_optimized_minutes,
-        )
-
         # Read fresh slider values from widget session state — slot.mpg isn't
         # updated until each slider's set_mpg below, so totaling the roster
         # here would leave the badge one interaction behind (same staleness
