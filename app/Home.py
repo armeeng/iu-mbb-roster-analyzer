@@ -70,6 +70,8 @@ h1 { font-size: 1.4rem !important; font-weight: 700 !important; margin: 0 0 0.6r
 [data-testid="stMetricValue"] { font-size: 1.5rem !important; }
 div[data-testid="stSelectbox"] label, div[data-testid="stSlider"] label { display: none; }
 [data-testid="stVerticalBlockBorderWrapper"] { border-radius: 8px; }
+button[kind="primary"] { background-color: #990000 !important; color: white !important; border-color: #990000 !important; }
+button[kind="primary"]:hover { background-color: #cc0000 !important; border-color: #cc0000 !important; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -179,6 +181,13 @@ with col_roster:
     with st.container(border=True):
         st.markdown('<div class="section-label">Roster</div>', unsafe_allow_html=True)
 
+        # ── Minutes optimizer ────────────────────────────────────────────
+        st.button(
+            "Optimize minutes",
+            type="primary",
+            on_click=_apply_optimized_minutes,
+        )
+
         # Read fresh slider values from widget session state — slot.mpg isn't
         # updated until each slider's set_mpg below, so totaling the roster
         # here would leave the badge one interaction behind (same staleness
@@ -226,17 +235,6 @@ with col_roster:
 
             with c_min:
                 st.markdown(f'<span class="min-val">{mpg:.0f} min</span>', unsafe_allow_html=True)
-
-        # ── Minutes optimizer ────────────────────────────────────────────
-        st.button(
-            "Optimize minutes",
-            help="Reallocates the 200 minutes across the current players to "
-                 "maximize projected team strength (season-sim net rating "
-                 "blended with projected BPR), with a soft fatigue penalty on "
-                 "heavy minutes and lineup floors (60 combined PG/Combo min, "
-                 "60 combined PF/C min). Moves the sliders directly.",
-            on_click=_apply_optimized_minutes,
-        )
 
 roster = st.session_state.roster  # re-read after any edits above
 
