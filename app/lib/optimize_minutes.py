@@ -39,12 +39,14 @@ HANDLER_FLOOR = 60.0
 BIG_FLOOR = 60.0
 
 # Fatigue penalty: FATIGUE_LAMBDA * max(0, mpg - FATIGUE_FREE_MPG)^2 per
-# player, in the same team-net-rating units as the objective. Tuned on the
-# default roster so the top players land in the low 30s and the rotation
-# keeps a realistic shape (~7-8 players), rather than the best five pinned
-# at 40 the way the penalty-free optimum comes out.
+# player, in the same team-net-rating units as the objective. Disabled for
+# now (LAMBDA=0) at staff request — without it the optimum pins the
+# highest-value players at the 40-minute slider max instead of spreading
+# minutes across a realistic rotation. Set FATIGUE_LAMBDA back to ~0.005 to
+# re-enable (that value was tuned on the default roster to land top players
+# in the low 30s with a ~7-8 player rotation).
 FATIGUE_FREE_MPG = 24.0
-FATIGUE_LAMBDA = 0.005
+FATIGUE_LAMBDA = 0.0
 
 
 @dataclass
