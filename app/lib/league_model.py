@@ -192,6 +192,11 @@ MANUAL_ORTG_ADDITIONS: dict[str, float] = {
     # ~121 — in line with the ~120 RosterCast average for returners whose
     # actual Ortg was 125+.
     "sam alexis": 121.0,
+    # Transferred in from Florida State; too recent a portal commitment to
+    # be on any team's RosterCast page yet. 2025-26 actual Ortg (at FSU) was
+    # 123.3 (32 games); the same regression (rc_ortg ≈ 0.41 * last_ortg + 67)
+    # gives ~118.
+    "chauncey wiggins": 118.0,
 }
 
 
