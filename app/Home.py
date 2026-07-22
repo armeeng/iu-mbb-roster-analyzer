@@ -311,10 +311,15 @@ with col_season:
 
         overall_wins = iu_row["mean_overall_wins"]
         overall_games = iu_row["overall_games"]
+        # Row position in `standings` (sorted by mean_conf_wins, same order the
+        # table below renders) — NOT mean_finish_rank, which averages Indiana's
+        # rank across simulations and can land a spot worse than the table's
+        # actual sort position when Indiana is bunched tightly with neighbors.
+        iu_position = int(standings.index[standings["team"] == "Indiana Hoosiers"][0]) + 1
 
         m1, m2, m3 = st.columns(3)
         m1.metric("Record", f"{overall_wins:.1f}-{overall_games - overall_wins:.1f}")
-        m2.metric("B1G Finish", f"#{iu_row['mean_finish_rank']:.0f}")
+        m2.metric("B1G Finish", f"#{iu_position}")
         m3.metric("At-Large Bid", f"{ncaa_odds * 100:.0f}%")
 
         st.markdown('<div class="sub-label">Big Ten standings</div>', unsafe_allow_html=True)
